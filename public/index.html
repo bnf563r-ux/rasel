@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة المراسلة - تواصل مع الآخرين</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Tahoma', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .screen {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 550px;
+            padding: 30px;
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 10px 0;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .user-info {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .search-section, .chat-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        .message {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 10px;
+        }
+
+        .message.sent {
+            background: #1e3c72;
+            color: white;
+            text-align: left;
+        }
+
+        .message.received {
+            background: #e0e0e0;
+            text-align: right;
+        }
+
+        .message small {
+            font-size: 11px;
+            opacity: 0.7;
+            display: block;
+        }
+
+        .logout-btn {
+            background: #c33;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- شاشة تسجيل الدخول -->
+<div id="loginScreen" class="screen active">
+    <h2>🔐 تسجيل الدخول</h2>
+    <input type="text" id="loginUsername" placeholder="اسم المستخدم">
+    <input type="password" id="loginPassword" placeholder="كلمة المرور">
+    <button onclick="login()">دخول</button>
+    <button onclick="showRegister()" style="background:#764ba2">إنشاء حساب جديد</button>
+    <div id="loginMessage"></div>
+</div>
+
+<!-- شاشة التسجيل -->
+<div id="registerScreen" class="screen">
+    <h2>📝 إنشاء حساب جديد</h2>
+    <input type="text" id="regUsername" placeholder="اسم المستخدم">
+    <input type="password" id="regPassword" placeholder="كلمة المرور">
+    <button onclick="register()">تسجيل</button>
+    <button onclick="showLogin()">عودة لتسجيل الدخول</button>
+    <div id="regMessage"></div>
+</div>
+
+<!-- الشاشة الرئيسية بعد الدخول -->
+<div id="mainScreen" class="screen">
+    <div class="user-info" id="userInfo"></div>
+    
+    <div class="search-section">
+        <h3>🔍 البحث عن مستخدم</h3>
+        <input type="text" id="searchUsername" placeholder="أدخل اسم المستخدم">
+        <button onclick="searchUser()">بحث</button>
+        <div id="searchResult"></div>
+    </div>
+    
+    <div class="chat-section">
+        <h3>💬 إرسال رسالة</h3>
+        <input type="text" id="sendTo" placeholder="إلى (اسم المستخدم)">
+        <textarea id="messageText" rows="3" placeholder="اكتب رسالتك هنا..."></textarea>
+        <button onclick="sendMessage()">إرسال</button>
+        <div id="sendResult"></div>
+    </div>
+    
+    <div class="chat-section">
+        <h3>📩 رسائلي</h3>
+        <button onclick="loadMessages()">تحديث الرسائل</button>
+        <div id="messagesList" style="margin-top: 15px; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+    
+    <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+</div>
+
+<script>
+    let currentUser = null;
+    const API_URL = window.location.origin;
+
+    async function register() {
+        const username = document.getElementById('regUsername').value;
+        const password = document.getElementById('regPassword').value;
+        const msgDiv = document.getElementById('regMessage');
+        
+        if (!username || !password) {
+            msgDiv.innerHTML = '<div class="error">❌ الرجاء ملء جميع الحقول</div>';
+            return;
+        }
+        
+        try {
+            const res = await fetch(`${API_URL}/api/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                msgDiv.innerHTML = '<div class="success">✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن</div>';
+                setTimeout(() => showLogin(), 1500);
+            } else {
+                msgDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+            }
+        } catch (err) {
+            msgDiv.innerHTML = '<div class="error">❌ خطأ في الاتصال بالخادم</div>';
+        }
+    }
+    
+    async function login() {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        const msgDiv = document.getElementById('loginMessage');
+        
+        if (!username || !password) {
+            msgDiv.innerHTML = '<div class="error">❌ الرجاء ملء جميع الحقول</div>';
+            return;
+        }
+        
+        try {
+            const res = await fetch(`${API_URL}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                currentUser = username;
+                document.getElementById('userInfo').innerHTML = `👤 مرحباً ${currentUser}`;
+                document.getElementById('loginScreen').classList.remove('active');
+                document.getElementById('mainScreen').classList.add('active');
+                loadMessages();
+            } else {
+                msgDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+            }
+        } catch (err) {
+            msgDiv.innerHTML = '<div class="error">❌ خطأ في الاتصال بالخادم</div>';
+        }
+    }
+    
+    async function searchUser() {
+        const searchUsername = document.getElementById('searchUsername').value;
+        const resultDiv = document.getElementById('searchResult');
+        
+        if (!searchUsername) {
+            resultDiv.innerHTML = '<div class="error">❌ أدخل اسم المستخدم للبحث</div>';
+            return;
+        }
+        
+        try {
+            const res = await fetch(`${API_URL}/api/search`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: searchUsername })
+            });
+            const data = await res.json();
+            
+            if (data.found) {
+                resultDiv.innerHTML = `<div class="success">✅ المستخدم <strong>${data.username}</strong> موجود! يمكنك مراسلته</div>`;
+                document.getElementById('sendTo').value = data.username;
+            } else {
+                resultDiv.innerHTML = '<div class="error">❌ المستخدم غير موجود</div>';
+            }
+        } catch (err) {
+            resultDiv.innerHTML = '<div class="error">❌ خطأ في البحث</div>';
+        }
+    }
+    
+    async function sendMessage() {
+        const to = document.getElementById('sendTo').value;
+        const message = document.getElementById('messageText').value;
+        const resultDiv = document.getElementById('sendResult');
+        
+        if (!to || !message) {
+            resultDiv.innerHTML = '<div class="error">❌ الرجاء إدخال المستخدم والرسالة</div>';
+            return;
+        }
+        
+        try {
+            const res = await fetch(`${API_URL}/api/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from: currentUser, to, message })
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                resultDiv.innerHTML = '<div class="success">✅ تم إرسال الرسالة بنجاح</div>';
+                document.getElementById('messageText').value = '';
+                loadMessages();
+                setTimeout(() => {
+                    resultDiv.innerHTML = '';
+                }, 2000);
+            } else {
+                resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
+            }
+        } catch (err) {
+            resultDiv.innerHTML = '<div class="error">❌ خطأ في الإرسال</div>';
+        }
+    }
+    
+    async function loadMessages() {
+        if (!currentUser) return;
+        
+        try {
+            const res = await fetch(`${API_URL}/api/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: currentUser })
+            });
+            const data = await res.json();
+            const messagesList = document.getElementById('messagesList');
+            
+            if (data.messages.length === 0) {
+                messagesList.innerHTML = '<p style="text-align:center;color:#888;">📭 لا توجد رسائل بعد</p>';
+                return;
+            }
+            
+            messagesList.innerHTML = data.messages.map(msg => `
+                <div class="message ${msg.from === currentUser ? 'sent' : 'received'}">
+                    <strong>${msg.from === currentUser ? 'إليك → ' + msg.to : 'من → ' + msg.from}</strong>
+                    <p>${msg.message}</p>
+                    <small>${new Date(msg.timestamp).toLocaleString('ar-EG')}</small>
+                </div>
+            `).join('');
+        } catch (err) {
+            console.error(err);
+        }
+    }
+    
+    function logout() {
+        currentUser = null;
+        document.getElementById('mainScreen').classList.remove('active');
+        document.getElementById('loginScreen').classList.add('active');
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('loginMessage').innerHTML = '';
+    }
+    
+    function showRegister() {
+        document.getElementById('loginScreen').classList.remove('active');
+        document.getElementById('registerScreen').classList.add('active');
+    }
+    
+    function showLogin() {
+        document.getElementById('registerScreen').classList.remove('active');
+        document.getElementById('loginScreen').classList.add('active');
+        document.getElementById('regMessage').innerHTML = '';
+    }
+    
+    // تحديث الرسائل كل 5 ثواني
+    setInterval(() => {
+        if (currentUser) loadMessages();
+    }, 5000);
+</script>
+</body>
+</html>
