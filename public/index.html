@@ -1,373 +1,794 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة المراسلة - تواصل مع الآخرين</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CallSpace — مكالمة جماعية</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070b12;
+    --surface: #0d1421;
+    --surface2: #131d2e;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --green: #00e676;
+    --red: #ff3d71;
+    --text: #e8edf5;
+    --muted: #4a5568;
+    --border: rgba(0,212,255,0.12);
+  }
 
-        body {
-            font-family: 'Segoe UI', 'Tahoma', Arial, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        .screen {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            width: 100%;
-            max-width: 550px;
-            padding: 30px;
-            display: none;
-        }
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-        .screen.active {
-            display: block;
-        }
+  /* Ambient background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80vw;
+    height: 80vw;
+    background: radial-gradient(ellipse, rgba(0,212,255,0.05) 0%, transparent 65%);
+    pointer-events: none;
+    z-index: 0;
+  }
 
-        h2 {
-            color: #1e3c72;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 28px;
-        }
+  /* ===== LOBBY ===== */
+  #lobby {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 24px;
+    position: relative;
+    z-index: 1;
+  }
 
-        input, textarea {
-            width: 100%;
-            padding: 12px 15px;
-            margin: 10px 0;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            font-size: 16px;
-            font-family: inherit;
-            transition: all 0.3s;
-        }
+  .logo {
+    font-size: 42px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: #1e3c72;
-        }
+  .tagline {
+    font-size: 15px;
+    color: var(--muted);
+    margin-bottom: 52px;
+    font-weight: 300;
+  }
 
-        button {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: transform 0.2s;
-        }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px;
+    width: 100%;
+    max-width: 420px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 60px rgba(0,212,255,0.04), 0 24px 48px rgba(0,0,0,0.4);
+  }
 
-        button:hover {
-            transform: translateY(-2px);
-        }
+  .card-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 28px;
+    color: var(--text);
+  }
 
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 10px;
-            border-radius: 10px;
-            margin: 10px 0;
-            text-align: center;
-        }
+  .field {
+    margin-bottom: 18px;
+  }
 
-        .success {
-            background: #efe;
-            color: #3c3;
-            padding: 10px;
-            border-radius: 10px;
-            margin: 10px 0;
-            text-align: center;
-        }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
 
-        .user-info {
-            background: #f5f5f5;
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 15px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    direction: rtl;
+  }
 
-        .search-section, .chat-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #eee;
-        }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+  }
 
-        .message {
-            background: #f0f0f0;
-            padding: 10px;
-            margin: 8px 0;
-            border-radius: 10px;
-        }
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-family: 'Tajawal', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+  }
 
-        .message.sent {
-            background: #1e3c72;
-            color: white;
-            text-align: left;
-        }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #0099bb);
+    color: #000;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,212,255,0.3); }
 
-        .message.received {
-            background: #e0e0e0;
-            text-align: right;
-        }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent2); background: rgba(124,58,237,0.1); }
 
-        .message small {
-            font-size: 11px;
-            opacity: 0.7;
-            display: block;
-        }
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 20px 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
 
-        .logout-btn {
-            background: #c33;
-            margin-top: 10px;
-        }
-    </style>
+  .my-id-box {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .my-id-box:hover { border-color: var(--accent); }
+  .my-id-value { color: var(--accent); font-weight: 600; font-size: 12px; direction: ltr; }
+
+  .copy-icon { font-size: 16px; }
+
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--green);
+    color: #000;
+    padding: 10px 22px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 700;
+    transition: transform 0.3s ease;
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ===== ROOM ===== */
+  #room {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  .room-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: rgba(13,20,33,0.9);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    position: relative;
+    z-index: 10;
+  }
+
+  .room-title { font-size: 16px; font-weight: 700; }
+  .room-id-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .room-id-badge:hover { background: rgba(0,212,255,0.1); }
+
+  .participants-count {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dot-live {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  /* Video grid */
+  .videos-wrapper {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #videos {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    max-width: 1400px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .video-tile {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    aspect-ratio: 16/9;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .video-tile:hover { transform: scale(1.01); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+  .video-tile video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .video-tile.local { border-color: rgba(0,212,255,0.4); }
+
+  .tile-label {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .muted-indicator {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(255,61,113,0.85);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .avatar-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    background: linear-gradient(135deg, var(--surface2), var(--surface));
+  }
+
+  /* Controls bar */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 20px;
+    background: rgba(13,20,33,0.95);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+  }
+
+  .ctrl-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.2s;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .ctrl-btn:hover { transform: scale(1.08); }
+  .ctrl-btn.active { background: rgba(0,212,255,0.15); border-color: var(--accent); }
+  .ctrl-btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+  .ctrl-btn.danger:hover { background: #cc2d59; box-shadow: 0 4px 20px rgba(255,61,113,0.4); }
+  .ctrl-btn.off { background: rgba(255,61,113,0.15); border-color: rgba(255,61,113,0.4); color: var(--red); }
+
+  .invite-section {
+    text-align: center;
+    padding: 12px 20px;
+    background: rgba(13,20,33,0.95);
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .invite-id { color: var(--accent); font-weight: 600; direction: ltr; cursor: pointer; }
+  .invite-id:hover { text-decoration: underline; }
+
+  /* Loading overlay */
+  .loading {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(7,11,18,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    backdrop-filter: blur(4px);
+  }
+  .loading.show { display: flex; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--muted); font-size: 14px; }
+
+  /* Status bar */
+  #status-bar {
+    text-align: center;
+    padding: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: none;
+  }
+
+  /* One big tile when alone */
+  #videos.solo { grid-template-columns: 1fr; max-width: 720px; }
+
+  @media (max-width: 600px) {
+    .room-header { padding: 12px 16px; }
+    .controls { gap: 10px; padding: 14px; }
+    .ctrl-btn { width: 46px; height: 46px; font-size: 18px; }
+    #videos { grid-template-columns: 1fr; }
+  }
+</style>
 </head>
 <body>
 
-<!-- شاشة تسجيل الدخول -->
-<div id="loginScreen" class="screen active">
-    <h2>🔐 تسجيل الدخول</h2>
-    <input type="text" id="loginUsername" placeholder="اسم المستخدم">
-    <input type="password" id="loginPassword" placeholder="كلمة المرور">
-    <button onclick="login()">دخول</button>
-    <button onclick="showRegister()" style="background:#764ba2">إنشاء حساب جديد</button>
-    <div id="loginMessage"></div>
+<!-- Lobby -->
+<div id="lobby">
+  <div class="logo">📡 CallSpace</div>
+  <div class="tagline">مكالمات فيديو جماعية — بدون تسجيل</div>
+
+  <div class="card">
+    <div class="card-title">ابدأ أو انضم لغرفة</div>
+
+    <div class="field">
+      <label>اسمك</label>
+      <input type="text" id="username" placeholder="مثال: أحمد" maxlength="20">
+    </div>
+
+    <button class="btn btn-primary" onclick="createRoom()">🚀 إنشاء غرفة جديدة</button>
+
+    <div class="divider">أو</div>
+
+    <div class="field">
+      <label>رمز الغرفة للانضمام</label>
+      <input type="text" id="joinId" placeholder="الصق رمز الغرفة هنا" style="direction:ltr">
+    </div>
+    <button class="btn btn-secondary" onclick="joinRoom()">🔗 انضم للغرفة</button>
+
+    <div class="my-id-box" id="myIdBox" onclick="copyMyId()" title="انسخ معرفك">
+      <span style="font-size:13px">معرفك الشخصي</span>
+      <span class="my-id-value" id="myPeerId">جاري الاتصال...</span>
+      <span class="copy-icon">📋</span>
+    </div>
+  </div>
 </div>
 
-<!-- شاشة التسجيل -->
-<div id="registerScreen" class="screen">
-    <h2>📝 إنشاء حساب جديد</h2>
-    <input type="text" id="regUsername" placeholder="اسم المستخدم">
-    <input type="password" id="regPassword" placeholder="كلمة المرور">
-    <button onclick="register()">تسجيل</button>
-    <button onclick="showLogin()">عودة لتسجيل الدخول</button>
-    <div id="regMessage"></div>
+<!-- Room -->
+<div id="room">
+  <div class="room-header">
+    <div class="participants-count">
+      <div class="dot-live"></div>
+      <span id="participantCount">1 مشارك</span>
+    </div>
+    <div class="room-title">📡 CallSpace</div>
+    <div class="room-id-badge" onclick="copyRoomId()" title="انسخ رمز الغرفة">
+      🔑 <span id="roomIdDisplay">---</span>
+    </div>
+  </div>
+
+  <div id="status-bar"></div>
+
+  <div class="videos-wrapper">
+    <div id="videos" class="solo"></div>
+  </div>
+
+  <div class="invite-section">
+    📨 شارك رمز الغرفة للدعوة:
+    <span class="invite-id" onclick="copyRoomId()" id="inviteId">---</span>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="muteBtn" onclick="toggleMute()" title="كتم الصوت">🎙️</button>
+    <button class="ctrl-btn" id="videoBtn" onclick="toggleVideo()" title="إيقاف الكاميرا">📷</button>
+    <button class="ctrl-btn danger" onclick="leaveRoom()" title="مغادرة">📵</button>
+    <button class="ctrl-btn" onclick="shareScreen()" title="مشاركة الشاشة" id="shareBtn">🖥️</button>
+  </div>
 </div>
 
-<!-- الشاشة الرئيسية بعد الدخول -->
-<div id="mainScreen" class="screen">
-    <div class="user-info" id="userInfo"></div>
-    
-    <div class="search-section">
-        <h3>🔍 البحث عن مستخدم</h3>
-        <input type="text" id="searchUsername" placeholder="أدخل اسم المستخدم">
-        <button onclick="searchUser()">بحث</button>
-        <div id="searchResult"></div>
-    </div>
-    
-    <div class="chat-section">
-        <h3>💬 إرسال رسالة</h3>
-        <input type="text" id="sendTo" placeholder="إلى (اسم المستخدم)">
-        <textarea id="messageText" rows="3" placeholder="اكتب رسالتك هنا..."></textarea>
-        <button onclick="sendMessage()">إرسال</button>
-        <div id="sendResult"></div>
-    </div>
-    
-    <div class="chat-section">
-        <h3>📩 رسائلي</h3>
-        <button onclick="loadMessages()">تحديث الرسائل</button>
-        <div id="messagesList" style="margin-top: 15px; max-height: 300px; overflow-y: auto;"></div>
-    </div>
-    
-    <button class="logout-btn" onclick="logout()">تسجيل خروج</button>
+<!-- Loading -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">جاري الاتصال...</div>
 </div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script>
-    let currentUser = null;
-    const API_URL = window.location.origin;
+  let peer = null;
+  let localStream = null;
+  let myPeerId = null;
+  let connections = {}; // peerId -> { call, conn }
+  let isMuted = false;
+  let isVideoOff = false;
+  let username = '';
+  let roomHostId = null;
+  let isSharing = false;
+  let originalStream = null;
 
-    async function register() {
-        const username = document.getElementById('regUsername').value;
-        const password = document.getElementById('regPassword').value;
-        const msgDiv = document.getElementById('regMessage');
-        
-        if (!username || !password) {
-            msgDiv.innerHTML = '<div class="error">❌ الرجاء ملء جميع الحقول</div>';
-            return;
+  // Init PeerJS
+  function initPeer() {
+    peer = new Peer(undefined, {
+      host: '0.peerjs.com',
+      port: 443,
+      secure: true,
+      debug: 0
+    });
+
+    peer.on('open', id => {
+      myPeerId = id;
+      document.getElementById('myPeerId').textContent = id;
+    });
+
+    peer.on('call', call => {
+      call.answer(localStream);
+      const remoteName = call.metadata?.name || 'مجهول';
+      handleCall(call, call.peer, remoteName);
+    });
+
+    peer.on('connection', conn => {
+      conn.on('data', data => {
+        if (data.type === 'join') {
+          // New peer joined — call them back if we're the host
+          callPeer(data.peerId, data.name);
         }
-        
-        try {
-            const res = await fetch(`${API_URL}/api/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                msgDiv.innerHTML = '<div class="success">✅ تم إنشاء الحساب بنجاح! يمكنك تسجيل الدخول الآن</div>';
-                setTimeout(() => showLogin(), 1500);
-            } else {
-                msgDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
-            }
-        } catch (err) {
-            msgDiv.innerHTML = '<div class="error">❌ خطأ في الاتصال بالخادم</div>';
+        if (data.type === 'name') {
+          updateTileLabel(data.peerId, data.name);
         }
+      });
+    });
+
+    peer.on('error', err => {
+      showToast('⚠️ خطأ: ' + err.message, '#ff3d71');
+    });
+  }
+
+  async function getMedia() {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      return true;
+    } catch (e) {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        showToast('⚠️ الكاميرا غير متاحة، الصوت فقط');
+        return true;
+      } catch (e2) {
+        showToast('❌ لا يمكن الوصول للكاميرا أو الميك', '#ff3d71');
+        return false;
+      }
     }
-    
-    async function login() {
-        const username = document.getElementById('loginUsername').value;
-        const password = document.getElementById('loginPassword').value;
-        const msgDiv = document.getElementById('loginMessage');
-        
-        if (!username || !password) {
-            msgDiv.innerHTML = '<div class="error">❌ الرجاء ملء جميع الحقول</div>';
-            return;
-        }
-        
-        try {
-            const res = await fetch(`${API_URL}/api/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                currentUser = username;
-                document.getElementById('userInfo').innerHTML = `👤 مرحباً ${currentUser}`;
-                document.getElementById('loginScreen').classList.remove('active');
-                document.getElementById('mainScreen').classList.add('active');
-                loadMessages();
-            } else {
-                msgDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
-            }
-        } catch (err) {
-            msgDiv.innerHTML = '<div class="error">❌ خطأ في الاتصال بالخادم</div>';
-        }
+  }
+
+  async function createRoom() {
+    username = document.getElementById('username').value.trim() || 'أنت';
+    showLoading('جاري إنشاء الغرفة...');
+    const ok = await getMedia();
+    if (!ok) { hideLoading(); return; }
+
+    roomHostId = myPeerId;
+    enterRoom();
+    hideLoading();
+    showToast('✅ تم إنشاء الغرفة! شارك الرمز للدعوة');
+  }
+
+  async function joinRoom() {
+    const hostId = document.getElementById('joinId').value.trim();
+    if (!hostId) { showToast('⚠️ أدخل رمز الغرفة', '#ff3d71'); return; }
+    username = document.getElementById('username').value.trim() || 'ضيف';
+    showLoading('جاري الانضمام...');
+    const ok = await getMedia();
+    if (!ok) { hideLoading(); return; }
+
+    roomHostId = hostId;
+    enterRoom();
+
+    // Notify host
+    const conn = peer.connect(hostId);
+    conn.on('open', () => {
+      conn.send({ type: 'join', peerId: myPeerId, name: username });
+    });
+
+    // Call host
+    callPeer(hostId, username);
+    hideLoading();
+  }
+
+  function enterRoom() {
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('room').style.display = 'flex';
+    document.getElementById('roomIdDisplay').textContent = roomHostId;
+    document.getElementById('inviteId').textContent = roomHostId;
+    addLocalVideo();
+  }
+
+  function callPeer(peerId, remoteName) {
+    if (connections[peerId]) return;
+    const call = peer.call(peerId, localStream, { metadata: { name: username } });
+    handleCall(call, peerId, remoteName);
+  }
+
+  function handleCall(call, peerId, remoteName) {
+    connections[peerId] = { call };
+
+    call.on('stream', remoteStream => {
+      addRemoteVideo(peerId, remoteStream, remoteName);
+      updateParticipantCount();
+    });
+
+    call.on('close', () => {
+      removeVideo(peerId);
+      delete connections[peerId];
+      updateParticipantCount();
+      showToast(`📤 ${remoteName} غادر الغرفة`);
+    });
+
+    call.on('error', () => {
+      removeVideo(peerId);
+      delete connections[peerId];
+      updateParticipantCount();
+    });
+  }
+
+  function addLocalVideo() {
+    const tile = createTile('local', localStream, username + ' (أنت)', true);
+    document.getElementById('videos').appendChild(tile);
+    updateGridLayout();
+  }
+
+  function addRemoteVideo(peerId, stream, name) {
+    if (document.getElementById('tile-' + peerId)) return;
+    const tile = createTile(peerId, stream, name, false);
+    document.getElementById('videos').appendChild(tile);
+    updateGridLayout();
+  }
+
+  function createTile(id, stream, name, isLocal) {
+    const tile = document.createElement('div');
+    tile.className = 'video-tile' + (isLocal ? ' local' : '');
+    tile.id = 'tile-' + id;
+
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.muted = isLocal;
+    video.playsInline = true;
+    video.srcObject = stream;
+    if (isLocal) video.style.transform = 'scaleX(-1)';
+
+    const label = document.createElement('div');
+    label.className = 'tile-label';
+    label.id = 'label-' + id;
+    label.innerHTML = `<span>👤</span><span>${name}</span>`;
+
+    tile.appendChild(video);
+    tile.appendChild(label);
+    return tile;
+  }
+
+  function removeVideo(peerId) {
+    const el = document.getElementById('tile-' + peerId);
+    if (el) el.remove();
+    updateGridLayout();
+  }
+
+  function updateTileLabel(peerId, name) {
+    const label = document.getElementById('label-' + peerId);
+    if (label) label.innerHTML = `<span>👤</span><span>${name}</span>`;
+  }
+
+  function updateGridLayout() {
+    const grid = document.getElementById('videos');
+    const count = grid.children.length;
+    grid.className = count === 1 ? 'solo' : '';
+  }
+
+  function updateParticipantCount() {
+    const count = Object.keys(connections).length + 1;
+    document.getElementById('participantCount').textContent = count + ' مشارك' + (count > 1 ? 'ين' : '');
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+    const btn = document.getElementById('muteBtn');
+    btn.textContent = isMuted ? '🔇' : '🎙️';
+    btn.className = 'ctrl-btn' + (isMuted ? ' off' : '');
+  }
+
+  function toggleVideo() {
+    isVideoOff = !isVideoOff;
+    localStream.getVideoTracks().forEach(t => t.enabled = !isVideoOff);
+    const btn = document.getElementById('videoBtn');
+    btn.textContent = isVideoOff ? '📵' : '📷';
+    btn.className = 'ctrl-btn' + (isVideoOff ? ' off' : '');
+  }
+
+  async function shareScreen() {
+    if (isSharing) {
+      // Stop sharing
+      const tracks = localStream.getVideoTracks();
+      tracks.forEach(t => t.stop());
+      const cam = await navigator.mediaDevices.getUserMedia({ video: true });
+      const camTrack = cam.getVideoTracks()[0];
+      localStream.removeTrack(tracks[0]);
+      localStream.addTrack(camTrack);
+      updateSenders(camTrack);
+      isSharing = false;
+      document.getElementById('shareBtn').className = 'ctrl-btn';
+      showToast('📷 تم العودة للكاميرا');
+    } else {
+      try {
+        const screen = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screen.getVideoTracks()[0];
+        const oldTrack = localStream.getVideoTracks()[0];
+        if (oldTrack) localStream.removeTrack(oldTrack);
+        localStream.addTrack(screenTrack);
+        updateSenders(screenTrack);
+        isSharing = true;
+        document.getElementById('shareBtn').className = 'ctrl-btn active';
+        screenTrack.onended = () => { isSharing = true; shareScreen(); };
+        showToast('🖥️ جاري مشاركة الشاشة');
+      } catch (e) {
+        showToast('⚠️ تم إلغاء مشاركة الشاشة');
+      }
     }
-    
-    async function searchUser() {
-        const searchUsername = document.getElementById('searchUsername').value;
-        const resultDiv = document.getElementById('searchResult');
-        
-        if (!searchUsername) {
-            resultDiv.innerHTML = '<div class="error">❌ أدخل اسم المستخدم للبحث</div>';
-            return;
-        }
-        
-        try {
-            const res = await fetch(`${API_URL}/api/search`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: searchUsername })
-            });
-            const data = await res.json();
-            
-            if (data.found) {
-                resultDiv.innerHTML = `<div class="success">✅ المستخدم <strong>${data.username}</strong> موجود! يمكنك مراسلته</div>`;
-                document.getElementById('sendTo').value = data.username;
-            } else {
-                resultDiv.innerHTML = '<div class="error">❌ المستخدم غير موجود</div>';
-            }
-        } catch (err) {
-            resultDiv.innerHTML = '<div class="error">❌ خطأ في البحث</div>';
-        }
-    }
-    
-    async function sendMessage() {
-        const to = document.getElementById('sendTo').value;
-        const message = document.getElementById('messageText').value;
-        const resultDiv = document.getElementById('sendResult');
-        
-        if (!to || !message) {
-            resultDiv.innerHTML = '<div class="error">❌ الرجاء إدخال المستخدم والرسالة</div>';
-            return;
-        }
-        
-        try {
-            const res = await fetch(`${API_URL}/api/send`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ from: currentUser, to, message })
-            });
-            const data = await res.json();
-            
-            if (res.ok) {
-                resultDiv.innerHTML = '<div class="success">✅ تم إرسال الرسالة بنجاح</div>';
-                document.getElementById('messageText').value = '';
-                loadMessages();
-                setTimeout(() => {
-                    resultDiv.innerHTML = '';
-                }, 2000);
-            } else {
-                resultDiv.innerHTML = `<div class="error">❌ ${data.error}</div>`;
-            }
-        } catch (err) {
-            resultDiv.innerHTML = '<div class="error">❌ خطأ في الإرسال</div>';
-        }
-    }
-    
-    async function loadMessages() {
-        if (!currentUser) return;
-        
-        try {
-            const res = await fetch(`${API_URL}/api/messages`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: currentUser })
-            });
-            const data = await res.json();
-            const messagesList = document.getElementById('messagesList');
-            
-            if (data.messages.length === 0) {
-                messagesList.innerHTML = '<p style="text-align:center;color:#888;">📭 لا توجد رسائل بعد</p>';
-                return;
-            }
-            
-            messagesList.innerHTML = data.messages.map(msg => `
-                <div class="message ${msg.from === currentUser ? 'sent' : 'received'}">
-                    <strong>${msg.from === currentUser ? 'إليك → ' + msg.to : 'من → ' + msg.from}</strong>
-                    <p>${msg.message}</p>
-                    <small>${new Date(msg.timestamp).toLocaleString('ar-EG')}</small>
-                </div>
-            `).join('');
-        } catch (err) {
-            console.error(err);
-        }
-    }
-    
-    function logout() {
-        currentUser = null;
-        document.getElementById('mainScreen').classList.remove('active');
-        document.getElementById('loginScreen').classList.add('active');
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-        document.getElementById('loginMessage').innerHTML = '';
-    }
-    
-    function showRegister() {
-        document.getElementById('loginScreen').classList.remove('active');
-        document.getElementById('registerScreen').classList.add('active');
-    }
-    
-    function showLogin() {
-        document.getElementById('registerScreen').classList.remove('active');
-        document.getElementById('loginScreen').classList.add('active');
-        document.getElementById('regMessage').innerHTML = '';
-    }
-    
-    // تحديث الرسائل كل 5 ثواني
-    setInterval(() => {
-        if (currentUser) loadMessages();
-    }, 5000);
+  }
+
+  function updateSenders(newTrack) {
+    Object.values(connections).forEach(({ call }) => {
+      const sender = call.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) sender.replaceTrack(newTrack);
+    });
+    // Update local tile
+    const localTile = document.querySelector('#tile-local video');
+    if (localTile) localTile.srcObject = localStream;
+  }
+
+  function leaveRoom() {
+    Object.values(connections).forEach(({ call }) => call.close());
+    connections = {};
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+    document.getElementById('videos').innerHTML = '';
+    document.getElementById('room').style.display = 'none';
+    document.getElementById('lobby').style.display = 'flex';
+    updateParticipantCount();
+  }
+
+  function copyRoomId() {
+    const id = roomHostId || myPeerId;
+    navigator.clipboard.writeText(id).then(() => showToast('✅ تم نسخ رمز الغرفة'));
+  }
+
+  function copyMyId() {
+    navigator.clipboard.writeText(myPeerId || '').then(() => showToast('✅ تم نسخ معرفك'));
+  }
+
+  function showLoading(msg) {
+    document.getElementById('loadingText').textContent = msg;
+    document.getElementById('loading').classList.add('show');
+  }
+  function hideLoading() {
+    document.getElementById('loading').classList.remove('show');
+  }
+
+  function showToast(msg, color) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = color || 'var(--green)';
+    t.style.color = color ? '#fff' : '#000';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  // Init
+  initPeer();
 </script>
 </body>
 </html>
